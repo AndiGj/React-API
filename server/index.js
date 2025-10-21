@@ -208,6 +208,11 @@ app.delete('/api/favorites', async (req, res) => {
 	}
 });
 
-const port = process.env.PORT || 3001;
-app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
+// JSON 404 for unknown API routes
+app.use('/api', (req, res) => {
+	res.status(404).json({ error: 'not found' });
+});
+
+const port = process.env.PORT || process.env.WEBSITES_PORT || 3001;
+app.listen(port, () => console.log(`API listening on ${port}`));
 

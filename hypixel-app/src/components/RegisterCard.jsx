@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiFetch } from "../lib/api";
 
 export default function RegisterCard() {
     const [loading, setLoading] = useState(false);
@@ -10,13 +11,10 @@ export default function RegisterCard() {
         setError("");
         setSuccess("");
         try {
-            const res = await fetch('/api/register', {
+            await apiFetch('/api/register', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, username, password })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Register failed');
             setSuccess('Account created. You can login now.');
         } catch (e) {
             setError(e.message);

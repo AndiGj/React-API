@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../lib/api";
 import Filter from "./Filter";
 
 export default function ItemList() {
@@ -68,8 +69,7 @@ export default function ItemList() {
         const u = JSON.parse(uStr);
         setUser(u);
         // Fetch favorites from our API
-        fetch(`/api/favorites?userId=${u.id}`)
-          .then(r => r.json())
+        apiFetch(`/api/favorites?userId=${u.id}`)
           .then(list => {
             const s = new Set(list.map(f => f.ItemId || f.itemId));
             setFavorites(s);
@@ -140,21 +140,17 @@ export default function ItemList() {
           next.delete(itemId);
           return next;
         });
-        const res = await fetch('/api/favorites', {
+        await apiFetch('/api/favorites', {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, itemId })
         });
-        if (!res.ok) throw new Error('Failed to remove favorite');
       } else {
         // Optimistic update
         setFavorites(prev => new Set(prev).add(itemId));
-        const res = await fetch('/api/favorites', {
+        await apiFetch('/api/favorites', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, itemId, itemName })
         });
-        if (!res.ok) throw new Error('Failed to add favorite');
       }
     } catch (e) {
       console.error(e);

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 
 export default function LoginCard() {
     const [loading, setLoading] = useState(false);
@@ -12,13 +13,10 @@ export default function LoginCard() {
         setError("");
         setSuccess("");
         try {
-            const res = await fetch('/api/login', {
+            const data = await apiFetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Login failed');
             // Persist user to localStorage so Items page can load their favorites
             if (data?.user) {
                 try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}

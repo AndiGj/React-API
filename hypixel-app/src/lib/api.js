@@ -1,17 +1,5 @@
 // Centralized API fetch with base URL and robust JSON/text handling
-function sanitizeBaseUrl(raw) {
-  if (!raw) return '';
-  let s = String(raw).trim();
-  // strip surrounding quotes if present
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1);
-  }
-  s = s.trim();
-  // remove a single trailing slash
-  s = s.replace(/\/$/, '');
-  return s;
-}
-const API_BASE = sanitizeBaseUrl(import.meta.env.VITE_API_URL);
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 async function parseBody(res) {
   const ct = res.headers.get('content-type') || '';

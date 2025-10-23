@@ -61,17 +61,18 @@ export default function ItemList() {
       });
   }, []);
 
-  // Load user from localStorage and fetch their favorites
+  // Load user from localStorage and fetch their favorites (server derives user from cookie)
   useEffect(() => {
     try {
       const uStr = localStorage.getItem('user');
       if (uStr) {
         const u = JSON.parse(uStr);
         setUser(u);
-        // Fetch favorites from our API
-        apiFetch(`/api/favorites?userId=${u.id}`)
+        // Fetch favorites from our API (cookie-authenticated)
+        fetch(`/api/favorites`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : [])
           .then(list => {
-            const s = new Set(list.map(f => f.ItemId || f.itemId));
+            const s = new Set((list || []).map(f => f.ItemId || f.itemId));
             setFavorites(s);
           })
           .catch(err => console.error('Failed to load favorites', err));
@@ -124,7 +125,7 @@ export default function ItemList() {
   };
 
   async function toggleFavorite(item) {
-    if (!user?.id) {
+    if (!user) {
       alert('Please login to favorite items.');
       return;
     }
@@ -142,14 +143,18 @@ export default function ItemList() {
         });
         await apiFetch('/api/favorites', {
           method: 'DELETE',
-          body: JSON.stringify({ userId: user.id, itemId })
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ itemId })
         });
       } else {
         // Optimistic update
         setFavorites(prev => new Set(prev).add(itemId));
         await apiFetch('/api/favorites', {
           method: 'POST',
-          body: JSON.stringify({ userId: user.id, itemId, itemName })
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ itemId, itemName })
         });
       }
     } catch (e) {
@@ -173,11 +178,13 @@ export default function ItemList() {
   }
 
   function handleLogout() {
-    try {
-      localStorage.removeItem('user');
-    } catch {}
-    setUser(null);
-    setFavorites(new Set());
+    fetch('/api/logout', { method: 'POST', credentials: 'include' })
+      .catch(() => {})
+      .finally(() => {
+        try { localStorage.removeItem('user'); } catch {}
+        setUser(null);
+        setFavorites(new Set());
+      });
   }
 
   // Helper function to get GRADIENT color based on rarity
@@ -261,9 +268,9 @@ const getItemImageSrc = (item) => {
     <div className="itemsList">
       <h1 className="itemsListTitle mt-5">Browse All Items</h1>
       {/* Search and Filter Controls */}
-      <div className="d-flex justify-content-center mb-4">
+      <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3 mb-4">
         {/* Search Input */}
-        <div className="searchItems w-25 me-2">
+        <div className="searchItems">
           <input
             type="text"
             placeholder="Search items..."
@@ -304,9 +311,9 @@ const getItemImageSrc = (item) => {
         */}
 
       {/* Item List */}
-      <div className="row">
+      <div className="row g-3">
         {filteredItems.slice(0, itemsToShow).map((item, index) => (
-          <div key={index} className="col-md-4 col-lg-3 mb-4">
+          <div key={index} className="col-12 col-sm-6 col-md-4 col-lg-4 col-xl-3">
             <div className="card h-100 border-0">
               <div className="cardtop" style={getRarityStyle(item.tier)}>
                 <img

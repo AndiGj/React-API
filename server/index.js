@@ -13,10 +13,21 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Dev CORS (ok to remove if serving frontend+API from same App Service origin)
+const allowed = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
-  credentials: true
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, false); // non-browser or same-origin
+    if (allowed.includes('*') || allowed.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
 }));
+
+// Answer preflight
+app.options('*', cors());
 
 // Azure SQL config
 const sqlConfig = {
@@ -154,9 +165,11 @@ app.post('/api/register', async (req, res) => {
 
 // Login: { username, password }
 app.post('/api/login', async (req, res) => {
-	const { username, password } = req.body || {};
-	if (!username || !password) return res.status(400).json({ error: 'username and password are required' });
-	try {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'username and password required' });
+    }
 		await poolConnect;
 		const result = await pool.request()
 			.input('username', sql.NVarChar(100), username)
@@ -171,8 +184,8 @@ app.post('/api/login', async (req, res) => {
 		const token = signToken({ Id: user.Id, Username: user.Username });
 		res.cookie('auth', token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
+			secure: true,            // required for SameSite=None
+			sameSite: 'none',        // allow cross-site cookie on XHR/fetch
 			path: '/',
 			maxAge: 7 * 24 * 60 * 60 * 1000
 		});
@@ -240,10 +253,8 @@ app.delete('/api/favorites', requireAuth, async (req, res) => {
   }
 });
 
-// JSON 404 for unknown API routes
-app.use('/api', (req, res) => {
-	res.status(404).json({ error: 'not found' });
-});
+// JSON 404 for API
+app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
 
 const port = process.env.PORT || process.env.WEBSITES_PORT || 3001;
 app.listen(port, () => console.log(`API listening on ${port}`));

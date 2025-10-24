@@ -69,13 +69,18 @@ export default function ItemList() {
         const u = JSON.parse(uStr);
         setUser(u);
         // Fetch favorites from our API (cookie-authenticated)
-        fetch(`/api/favorites`, { credentials: 'include' })
-          .then(r => r.ok ? r.json() : [])
+        apiFetch('/api/favorites')
           .then(list => {
-            const s = new Set((list || []).map(f => f.ItemId || f.itemId));
+            const items = Array.isArray(list) ? list : [];
+            const s = new Set(items.map(f => f.ItemId || f.itemId));
             setFavorites(s);
           })
-          .catch(err => console.error('Failed to load favorites', err));
+          .catch(err => {
+            // Ignore unauthorized; log other errors
+            if (!/401|unauthorized/i.test(String(err?.message))) {
+              console.error('Failed to load favorites', err);
+            }
+          });
       }
     } catch (e) {
       console.warn('No user in localStorage');
@@ -143,8 +148,6 @@ export default function ItemList() {
         });
         await apiFetch('/api/favorites', {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ itemId })
         });
       } else {
@@ -152,8 +155,6 @@ export default function ItemList() {
         setFavorites(prev => new Set(prev).add(itemId));
         await apiFetch('/api/favorites', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ itemId, itemName })
         });
       }
@@ -178,7 +179,7 @@ export default function ItemList() {
   }
 
   function handleLogout() {
-    fetch('/api/logout', { method: 'POST', credentials: 'include' })
+    apiFetch('/api/logout', { method: 'POST' })
       .catch(() => {})
       .finally(() => {
         try { localStorage.removeItem('user'); } catch {}

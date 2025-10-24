@@ -9,21 +9,22 @@ export default function LoginCard() {
     const navigate = useNavigate();
 
    async function onLogin(username, password) {
+        setError('');
+        setSuccess('');
+        setLoading(true);
         try {
-            setLoading(true); setError(""); setSuccess("");
-            const res = await apiFetch('/api/login', {
+            const data = await apiFetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // important for cookie
             body: JSON.stringify({ username, password })
         });
-        if (!res.ok) throw new Error('Login failed');
-        const data = await res.json();
         localStorage.setItem('user', JSON.stringify(data.user));
         setSuccess(`Welcome ${data.user.username}. Redirecting...`);
         setTimeout(() => navigate('/'), 500);
         } catch (e) {
-            setError(e.message);
+            console.error('Login failed:', e);
+            setError(String(e.message || e));
         } finally {
             setLoading(false);
         }
